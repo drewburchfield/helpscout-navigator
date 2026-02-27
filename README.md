@@ -2,17 +2,11 @@
 
 <img src="https://ghrb.waren.build/banner?header=helpscout-navigator%20![helpscout]&subheader=HelpScout%20ticket%20search%20with%20bundled%20MCP%20server&bg=0a1628&secondaryBg=1e3a5f&color=e8f0fe&subheaderColor=7eb8da&headerFont=Inter&subheaderFont=Inter&support=false" alt="helpscout-navigator" width="100%">
 
-<br><br>
-
-**HelpScout ticket search with bundled MCP server.**
-
 A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugin from the [not-my-job](https://github.com/drewburchfield/not-my-job) marketplace.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 </div>
-
-<br>
 
 ## What it does
 
