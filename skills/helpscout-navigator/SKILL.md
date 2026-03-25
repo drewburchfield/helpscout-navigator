@@ -1,6 +1,6 @@
 ---
 name: helpscout-navigator
-description: Use when searching HelpScout tickets/conversations. Provides correct tool selection, required sequencing (inbox lookup first), and prevents common mistakes like active-only searches. Triggers on "search helpscout", "find tickets", "check support inbox", "helpscout conversations".
+description: Use when searching HelpScout tickets, customers, or organizations. Provides correct tool selection, required sequencing, and prevents common mistakes. Triggers on "search helpscout", "find tickets", "check support inbox", "helpscout conversations", "look up customer", "find organization", "customer history".
 ---
 
 # HelpScout Navigation
@@ -87,12 +87,14 @@ Tell the user:
 
 ## Overview
 
-The HelpScout MCP server provides 9 tools for searching and retrieving support conversations. However, using them incorrectly leads to missed tickets and incomplete results. This skill ensures you use the right tool in the right order.
+The HelpScout MCP server provides 17 tools for searching and retrieving support conversations. However, using them incorrectly leads to missed tickets and incomplete results. This skill ensures you use the right tool in the right order.
 
 **Core problems this skill solves:**
 1. Users forget to call `searchInboxes` first (required for inbox-scoped searches)
 2. `searchConversations` defaults to "active" status only (misses closed/pending)
 3. Users don't know which search tool to use for their query type
+4. Users don't know the customer/org lookup tools for account investigation
+5. Users try conversation search when they should use customer or org tools
 
 ---
 
@@ -196,6 +198,14 @@ digraph decision {
 | Get quick overview | `getConversationSummary` | Need conversation ID |
 | List all inboxes | `listAllInboxes` | None |
 | Get current server time | `getServerTime` | None |
+| Look up a customer by email | `searchCustomersByEmail` | None |
+| Browse customers | `listCustomers` | None |
+| Get full customer profile | `getCustomer` | Need customer ID |
+| Get customer contact details | `getCustomerContacts` | Need customer ID |
+| Browse organizations | `listOrganizations` | None |
+| Get organization details | `getOrganization` | Need organization ID |
+| See who is in an organization | `getOrganizationMembers` | Need organization ID |
+| See org's support history | `getOrganizationConversations` | Need organization ID |
 
 ---
 
@@ -212,6 +222,14 @@ digraph decision {
 | `getConversationSummary` | Quick overview | Needs conversation ID |
 | `getThreads` | Full message history | Needs conversation ID |
 | `getServerTime` | Current timestamp | For time-relative searches |
+| `listCustomers` | Browse customers by name or query | Page-based v2 API |
+| `searchCustomersByEmail` | Find customer by email | Uses v3 API with cursor pagination |
+| `getCustomer` | Full customer profile with contacts | Includes embedded sub-resources |
+| `getCustomerContacts` | All contact channels for a customer | Parallel sub-resource lookups |
+| `listOrganizations` | Browse organizations | Sortable by activity, size, name |
+| `getOrganization` | Organization profile with counts | Optional customer/conversation counts |
+| `getOrganizationMembers` | Customers in an organization | 50 per page |
+| `getOrganizationConversations` | Support history for an organization | 50 per page |
 
 See [references/tool-reference.md](references/tool-reference.md) for complete parameter documentation.
 
@@ -320,6 +338,55 @@ See [references/tool-reference.md](references/tool-reference.md) for complete pa
 
 ---
 
+### Workflow 7: Customer Investigation by Email
+
+**User:** "Look up the customer jane@acme.com and show their history"
+
+**Steps:**
+1. Find customer by email:
+   ```
+   searchCustomersByEmail(email: "jane@acme.com")
+   ```
+   Result: `{ id: 12345, firstName: "Jane", organizationId: 456 }`
+
+2. Get full profile:
+   ```
+   getCustomer(customerId: "12345")
+   ```
+
+3. Get their conversations:
+   ```
+   structuredConversationFilter(customerIds: [12345], status: "all", sortBy: "createdAt")
+   ```
+
+### Workflow 8: Organization Account Review
+
+**User:** "Show me everything about the Acme Corp account"
+
+**Steps:**
+1. Find the organization:
+   ```
+   listOrganizations(sortField: "name")
+   ```
+   Find "Acme Corp" in results, get org ID.
+
+2. Get organization details:
+   ```
+   getOrganization(organizationId: "456", includeCounts: true)
+   ```
+
+3. See who is in the org:
+   ```
+   getOrganizationMembers(organizationId: "456")
+   ```
+
+4. See their support history:
+   ```
+   getOrganizationConversations(organizationId: "456")
+   ```
+
+---
+
 ## Anti-Patterns (What NOT to Do)
 
 | Mistake | Why It Fails | Correct Approach |
@@ -376,6 +443,17 @@ getThreads(conversationId: "12345678")
 
 # Quick summary
 getConversationSummary(conversationId: "12345678")
+
+# Customer lookup
+searchCustomersByEmail(email: "jane@acme.com")
+getCustomer(customerId: "12345")
+getCustomerContacts(customerId: "12345")
+
+# Organization traversal
+listOrganizations(sortField: "conversationCount", sortOrder: "desc")
+getOrganization(organizationId: "456", includeCounts: true)
+getOrganizationMembers(organizationId: "456")
+getOrganizationConversations(organizationId: "456")
 ```
 
 ---
@@ -390,3 +468,6 @@ Before executing a HelpScout search, verify:
 - [ ] Need ALL statuses? → Using `structuredConversationFilter(sortBy: "waitingSince", status: "all")` (NOT `searchConversations`)?
 - [ ] Using inbox ID, not inbox name, in API calls?
 - [ ] Using `structuredConversationFilter`? → Have unique field (conversationNumber, assignedTo, customerIds, folderId, or sortBy with waitingSince/customerName/customerEmail)?
+- [ ] Looking up a customer? → Using `searchCustomersByEmail` (not conversation search)?
+- [ ] Need customer's full profile? → Using `getCustomer` after finding ID?
+- [ ] Investigating an account? → Starting with `listOrganizations` or `getOrganization`?

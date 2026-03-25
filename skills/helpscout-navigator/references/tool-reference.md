@@ -1,6 +1,6 @@
 # HelpScout MCP Tool Reference
 
-Complete parameter documentation for all 9 HelpScout MCP tools.
+Complete parameter documentation for all 17 HelpScout MCP tools.
 
 ---
 
@@ -281,3 +281,166 @@ getThreads({ conversationId: "12345678", limit: 200 })
 ```
 
 **Use case:** Reference for time-relative searches, debugging timestamp issues.
+
+---
+
+## 10. listCustomers
+
+**Purpose:** Browse and search customers by name, query syntax, or modification date. Page-based pagination (v2 API).
+
+**Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `firstName` | string | no | - | Filter by first name |
+| `lastName` | string | no | - | Filter by last name |
+| `query` | string | no | - | Advanced query syntax |
+| `mailbox` | number | no | - | Filter by mailbox ID |
+| `modifiedSince` | string | no | - | ISO 8601 date |
+| `page` | number | no | 1 | Page number |
+| `sortField` | enum | no | createdAt | createdAt, firstName, lastName, modifiedAt |
+| `sortOrder` | enum | no | desc | asc, desc |
+
+**Returns:** Array of customer objects with id, name, org, email, conversationCount
+
+**Example:**
+```javascript
+listCustomers({ firstName: "Jane", sortField: "createdAt", sortOrder: "desc" })
+```
+
+---
+
+## 11. searchCustomersByEmail
+
+**Purpose:** Find a customer by exact email address using v3 API with cursor pagination.
+
+**Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `email` | string | yes | - | Exact email address to search |
+| `firstName` | string | no | - | Filter by first name |
+| `lastName` | string | no | - | Filter by last name |
+| `query` | string | no | - | Advanced query syntax |
+| `createdSince` | string | no | - | ISO 8601 date |
+| `modifiedSince` | string | no | - | ISO 8601 date |
+| `cursor` | string | no | - | Pagination cursor |
+
+**Returns:** Array of customer objects matching the email
+
+**Example:**
+```javascript
+searchCustomersByEmail({ email: "jane@acme.com" })
+```
+
+---
+
+## 12. getCustomer
+
+**Purpose:** Get a full customer profile by ID. Returns profile with embedded contact details (emails, phones, chats, social profiles, websites) plus address from a separate lookup.
+
+**Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `customerId` | string | yes | - | Numeric customer ID |
+
+**Returns:** Customer object with full profile, embedded contacts, address
+
+**Example:**
+```javascript
+getCustomer({ customerId: "12345" })
+```
+
+---
+
+## 13. getCustomerContacts
+
+**Purpose:** Get all contact channels for a customer: emails, phones, chats, social profiles, websites, and address. Calls 6 sub-resource endpoints in parallel.
+
+**Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `customerId` | string | yes | - | Numeric customer ID |
+
+**Returns:** Object with emails, phones, chats, socialProfiles, websites, address arrays
+
+**Example:**
+```javascript
+getCustomerContacts({ customerId: "12345" })
+```
+
+---
+
+## 14. listOrganizations
+
+**Purpose:** Browse all organizations with sorting options. Returns 50 per page.
+
+**Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `page` | number | no | 1 | Page number |
+| `sortField` | enum | no | lastInteractionAt | name, customerCount, conversationCount, lastInteractionAt |
+| `sortOrder` | enum | no | desc | asc, desc |
+
+**Returns:** Array of organization objects with id, name, domains, counts
+
+**Example:**
+```javascript
+listOrganizations({ sortField: "conversationCount", sortOrder: "desc" })
+```
+
+---
+
+## 15. getOrganization
+
+**Purpose:** Get an organization by ID with optional customer/conversation counts.
+
+**Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `organizationId` | string | yes | - | Numeric organization ID |
+| `includeCounts` | boolean | no | true | Include customer/conversation counts |
+| `includeProperties` | boolean | no | false | Include custom properties |
+
+**Returns:** Organization object with full profile and optional counts
+
+**Example:**
+```javascript
+getOrganization({ organizationId: "456", includeCounts: true })
+```
+
+---
+
+## 16. getOrganizationMembers
+
+**Purpose:** Get all customers belonging to an organization. 50 per page.
+
+**Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `organizationId` | string | yes | - | Numeric organization ID |
+| `page` | number | no | 1 | Page number |
+
+**Returns:** Array of customer objects in the organization
+
+**Example:**
+```javascript
+getOrganizationMembers({ organizationId: "456" })
+```
+
+---
+
+## 17. getOrganizationConversations
+
+**Purpose:** Get all conversations associated with an organization. 50 per page.
+
+**Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `organizationId` | string | yes | - | Numeric organization ID |
+| `page` | number | no | 1 | Page number |
+
+**Returns:** Array of conversation summary objects (id, number, subject, status, dates, tags)
+
+**Example:**
+```javascript
+getOrganizationConversations({ organizationId: "456" })
+```

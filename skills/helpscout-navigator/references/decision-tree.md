@@ -256,6 +256,95 @@ const closed = searchConversations({
 
 ---
 
+## Scenario 10: Customer Lookup by Email
+
+**User:** "Find the customer with email jane@acme.com"
+
+**Approach:**
+```javascript
+// Step 1: Search by email (v3 API, exact match)
+searchCustomersByEmail({ email: "jane@acme.com" })
+// Returns: [{ id: 12345, firstName: "Jane", lastName: "Doe", organizationId: 456 }]
+
+// Step 2: Get full profile with contacts
+getCustomer({ customerId: "12345" })
+// Returns: full profile with _embedded.emails, phones, chats, etc.
+
+// Step 3 (optional): Get all contact channels
+getCustomerContacts({ customerId: "12345" })
+// Returns: emails, phones, chats, socialProfiles, websites, address
+```
+
+**When to use `searchCustomersByEmail` vs `listCustomers`:**
+- `searchCustomersByEmail` - exact email match, v3 API, cursor pagination
+- `listCustomers` - name search, advanced query syntax, v2 API, page pagination
+
+**When NOT to use for customer lookup:**
+- Don't use `advancedConversationSearch(customerEmail: "...")` to find customers. That searches conversations, not the customer directory.
+
+---
+
+## Scenario 11: Organization Account Review
+
+**User:** "Show me the Acme Corp account and all their support history"
+
+**Approach:**
+```javascript
+// Step 1: Find the organization
+listOrganizations({ sortField: "name", sortOrder: "asc" })
+// Paginate if needed until you find "Acme Corp"
+
+// Step 2: Get organization details with counts
+getOrganization({ organizationId: "456", includeCounts: true })
+// Returns: name, domains, customerCount, conversationCount
+
+// Step 3: See who is in the org
+getOrganizationMembers({ organizationId: "456" })
+// Returns: all customers belonging to this org (50 per page)
+
+// Step 4: See their support history
+getOrganizationConversations({ organizationId: "456" })
+// Returns: all conversations for this org (50 per page)
+
+// Step 5 (optional): Deep dive into a specific conversation
+getConversationSummary({ conversationId: "<id from step 4>" })
+getThreads({ conversationId: "<id from step 4>" })
+```
+
+**Full traversal pattern:**
+Organization -> Members -> Pick a member -> getCustomer -> Their conversations -> Thread details
+
+---
+
+## Scenario 12: Customer History from Conversation
+
+**User:** "Who is the customer on ticket #42839 and what's their full history?"
+
+**Approach:**
+```javascript
+// Step 1: Look up the ticket
+structuredConversationFilter({ conversationNumber: 42839 })
+// Get the customer ID from the result
+
+// Step 2: Get full customer profile
+getCustomer({ customerId: "<customer.id from step 1>" })
+// Returns: profile with organizationId, contact details
+
+// Step 3: Get all their conversations
+structuredConversationFilter({
+  customerIds: [<customer.id>],
+  status: "all",
+  sortBy: "createdAt",
+  sortOrder: "desc"
+})
+
+// Step 4 (optional): See their org context
+getOrganization({ organizationId: "<from step 2>" })
+getOrganizationMembers({ organizationId: "<from step 2>" })
+```
+
+---
+
 ## Decision Tree Summary
 
 ```
@@ -283,9 +372,20 @@ START
   ├─ Just listing recent tickets by SINGLE status/time?
   │   └─ YES → searchConversations() (status: active, pending, closed, OR spam)
   │
-  └─ Need full conversation details?
-      ├─ Quick overview → getConversationSummary()
-      └─ Full thread → getThreads()
+  ├─ Need full conversation details?
+  │   ├─ Quick overview → getConversationSummary()
+  │   └─ Full thread → getThreads()
+  │
+  ├─ Looking up a customer by email?
+  │   └─ YES → searchCustomersByEmail()
+  │
+  ├─ Need customer profile or contact details?
+  │   └─ YES → getCustomer() or getCustomerContacts() (need customer ID)
+  │
+  ├─ Investigating an organization/account?
+  │   └─ YES → listOrganizations() → getOrganization() → getOrganizationMembers()
+  │
+  └─ (end)
 ```
 
 ---
